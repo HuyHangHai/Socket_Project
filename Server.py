@@ -50,9 +50,8 @@ def proxy_server():
 
         # Send the response back to the client
         client_socket.sendall(response_data)
-
-        
-    # Close the sockets
+  
+        # Close the sockets
         web_socket.close()
         client_socket.close()    
 
