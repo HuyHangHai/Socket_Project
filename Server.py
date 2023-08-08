@@ -17,9 +17,14 @@ def check_request(request):
     method = request.split()[0]
 
     # check method
-    if method not in [b'GET', b'POST', b'HEAD']:
-        return False
-    return True
+    if method in [b'GET', b'POST', b'HEAD']:
+        return 1
+    elif method in [b'CONNECT']:
+        return 2
+    else:
+        return 3
+    
+    return 0
 
 # get web server's name
 def get_host_name(request):
@@ -61,7 +66,7 @@ def configure_403(response_data):
     response_data += b"<head>"
     response_data += b"<title>403 Forbidden</title>"
     response_data += b"<style>"
-    response_data += b"h1 { color: blue; }"  # Define the CSS style for the h1 element (red color)
+    response_data += b"h1 { color: black; }"  # Define the CSS style for the h1 element (red color)
     response_data += b"</style>"
     response_data += b"</head>"
     response_data += b"<body>"
@@ -73,7 +78,6 @@ def configure_403(response_data):
 
 def check_valid_web(web):
     i = 0  
-    print(num_while_list)
     while i < num_while_list:
         if web.find(while_list[i]) != -1 :
             return False
@@ -91,7 +95,7 @@ def proxy_server():
         while True:
             client_socket, client_addr = proxy_socket.accept()
             data = client_socket.recv(BUFF_SIZE)
-            if not check_request(data):
+            if check_request(data) == 2:
                 continue
             break
         print("Received a connection from:", client_addr)
@@ -111,10 +115,13 @@ def proxy_server():
         response_data = web_socket.recv(BUFF_SIZE)     
 
         # check all 403 situations
-        if current_time < open_time and current_time > end_time:
+        if not (current_time >= open_time and current_time <= end_time):
             response_data = configure_403(response_data)
 
         if not check_valid_web(host_name):
+            response_data = configure_403(response_data)
+
+        if check_request(data) == 3:
             response_data = configure_403(response_data)
 
         print(response_data, '\n')
