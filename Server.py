@@ -39,14 +39,15 @@ def read_config():
 
     f = open("config.txt", 'r')
     
-    cache_time = f.readline()
-    while_list = f.readline()
-    time = f.readline()
+    cache_time = f.readline().strip()
+    while_list = f.readline().strip()
+    time = f.readline().strip()
+
 
     # Handle input
     cache_time = cache_time.split()[2]
 
-    while_list = while_list.split("=")[1].split(",")
+    while_list = while_list.split("=")[1].split(", ")
 
     time = time.split('=')[1]
     open_time = int(time.split('-')[0])
@@ -76,13 +77,13 @@ def configure_403(response_data):
 
     return response_data
 
-def check_valid_web(web):
-    i = 0  
-    while i < num_while_list:
-        if web.find(while_list[i]) != -1 :
-            return True
-        i += 1
+def check_valid_web(request_path):
+    for item in while_list:
+        index = request_path.find(item)
+        if index != -1:
+            return True  
     return False
+
 
 def proxy_server():
     proxy_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -90,7 +91,7 @@ def proxy_server():
     proxy_socket.listen(1)
 
     while True:
-
+        
         print("Ready to serve...")
         while True:
             client_socket, client_addr = proxy_socket.accept()
@@ -103,6 +104,12 @@ def proxy_server():
         # Receive the request from the client
         print(data.decode())
         request_data = data
+        response_data = b''
+        
+        # check valid web for 403
+        if not check_valid_web(request_data.decode().split()[1]):
+            response_data = configure_403(response_data)
+            client_socket.sendall(response_data)
 
         host_name = get_host_name(request_data)
 
@@ -116,9 +123,6 @@ def proxy_server():
 
         # check all 403 situations
         if not (current_time >= open_time and current_time <= end_time):
-            response_data = configure_403(response_data)
-
-        if check_valid_web(host_name):
             response_data = configure_403(response_data)
 
         if check_request(data) == 3:
