@@ -80,9 +80,9 @@ def check_valid_web(web):
     i = 0  
     while i < num_while_list:
         if web.find(while_list[i]) != -1 :
-            return False
+            return True
         i += 1
-    return True
+    return False
 
 def proxy_server():
     proxy_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -118,7 +118,7 @@ def proxy_server():
         if not (current_time >= open_time and current_time <= end_time):
             response_data = configure_403(response_data)
 
-        if not check_valid_web(host_name):
+        if check_valid_web(host_name):
             response_data = configure_403(response_data)
 
         if check_request(data) == 3:
