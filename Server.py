@@ -4,7 +4,8 @@ from datetime import datetime, time
 
 BUFF_SIZE =  4096
 HOST, PORT = '127.0.0.1', 8888
-current_time = datetime.now().hour
+current_time_hour = datetime.now().hour
+current_time_minute = datetime.now().minute
 cache_time = int(0)
 while_list = ""
 num_while_list = -1
@@ -57,6 +58,15 @@ def read_config():
 
     f.close()
 
+def check_valid_time(response_data):
+    print('yes')
+    if not (current_time_hour >= open_time and current_time_hour <= end_time):
+        response_data = configure_403(response_data)
+    if (current_time_hour == end_time):
+        if (current_time_minute > 0):
+            response_data = configure_403(response_data)
+    return response_data
+
 def configure_403(response_data):
     response_data = b"HTTP/1.0 403 Forbidden\r\n"
     response_data += b"Content-Type: text/html\r\n"
@@ -83,7 +93,6 @@ def check_valid_web(request_path):
         if index != -1:
             return True  
     return False
-
 
 def proxy_server():
     proxy_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -122,8 +131,7 @@ def proxy_server():
         response_data = web_socket.recv(BUFF_SIZE)     
 
         # check all 403 situations
-        if not (current_time >= open_time and current_time <= end_time):
-            response_data = configure_403(response_data)
+        response_data = check_valid_time(response_data)
 
         if check_request(data) == 3:
             response_data = configure_403(response_data)
