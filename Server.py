@@ -59,7 +59,6 @@ def read_config():
     f.close()
 
 def check_valid_time(response_data):
-    print('yes')
     if not (current_time_hour >= open_time and current_time_hour <= end_time):
         response_data = configure_403(response_data)
     if (current_time_hour == end_time):
