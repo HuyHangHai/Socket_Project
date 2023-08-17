@@ -194,13 +194,13 @@ def proxy_server():
     thread_manager.start()
     while True:
         print("Ready to serve...")
+        client_socket, client_addr = proxy_socket.accept()
+        print("Received a connection from:", client_addr)
         while True:
-            client_socket, client_addr = proxy_socket.accept()
             data = client_socket.recv(BUFF_SIZE)
             if check_request(data) == 2:
                 continue
             break
-        print("Received a connection from:", client_addr)
 
         # Receive the request from the client
         print(data.decode())
