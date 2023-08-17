@@ -200,43 +200,44 @@ def proxy_server():
             data = client_socket.recv(BUFF_SIZE)
             if check_request(data) == 2:
                 continue
-            break
 
-        # Receive the request from the client
-        print(data.decode())
-        request_data = data
-        response_data = b""
+            # Receive the request from the client
+            print(data.decode())
+            request_data = data
+            response_data = b""
 
-        # check valid web for 403
-        if not check_valid_web(request_data.decode().split()[1]):
-            response_data = configure_403(response_data)
+            # check valid web for 403
+            if not check_valid_web(request_data.decode().split()[1]):
+                response_data = configure_403(response_data)
 
-        else:
-            # caching time
-            request_str = data.decode("utf8")
-            url = request_str.split("\n")[0].split()[1]
+            else:
+                # caching time
+                request_str = data.decode("utf8")
+                url = request_str.split("\n")[0].split()[1]
 
-            if isImageURL(url) == True:
-                cache_response = Caching(url)
+                if isImageURL(url) == True:
+                    cache_response = Caching(url)
 
-                if cache_response != "":
-                    response_data += cache_response
+                    if cache_response != "":
+                        response_data += cache_response
+                    else:
+                        response_data = forward2Server(request_data, url)
+
                 else:
                     response_data = forward2Server(request_data, url)
 
-            else:
-                response_data = forward2Server(request_data, url)
-
-            # print(response_data, "\n")
+                # print(response_data, "\n")
 
             # Send the response back to the client
-        client_socket.sendall(response_data)
+            client_socket.sendall(response_data)
+
+            break
 
         # Close the sockets
         client_socket.close()
 
         # Tăng số luồng đang hoạt động
-        active_thread_count += 1
+        #active_thread_count += 1
 
 
 def manage_threads():
