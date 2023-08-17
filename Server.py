@@ -10,8 +10,8 @@ HOST, PORT = "127.0.0.1", 8888
 current_time_hour = datetime.now().hour
 current_time_minute = datetime.now().minute
 cache_timeout = int(0)
-while_list = ""
-num_while_list = -1
+white_list = []
+num_white_list = -1
 open_time = int(-1)
 end_time = int(-1)
 cache = {}
@@ -20,27 +20,27 @@ cache = {}
 # read file 'config.txt'
 def readFile(filename):
     global cache_timeout
-    global while_list
-    global num_while_list
+    global white_list
+    global num_white_list
     global open_time
     global end_time
 
     f = open(filename, "r")
 
     Cache_time = f.readline().strip()
-    while_list = f.readline().strip()
+    white_list = f.readline().strip()
     time = f.readline().strip()
 
     # Handle input
     cache_timeout = int(Cache_time.split()[2])
 
-    while_list = while_list.split("=")[1].split(", ")
+    white_list = white_list.split("=")[1].split(", ")
 
     time = time.split("=")[1]
     open_time = int(time.split("-")[0])
     end_time = int(time.split("-")[1])
 
-    num_while_list = len(while_list)
+    num_white_list = len(white_list)
 
     f.close()
 
@@ -101,7 +101,7 @@ def configure_403(response_data):
 
 
 def check_valid_web(request_path):
-    for item in while_list:
+    for item in white_list:
         index = request_path.find(item)
         if index != -1:
             return True
@@ -174,6 +174,7 @@ def process_request(request_data):
     else:
         return forward2Server(request_data, url)
 
+
 def handle_client(client_socket):
     data = client_socket.recv(BUFF_SIZE)
     response_data = process_request(data)
@@ -181,10 +182,11 @@ def handle_client(client_socket):
     client_socket.sendall(response_data)
     client_socket.close()
 
+
 def cut_byteSeq(byteSeq):
     for i in range(0, len(byteSeq)):
-        if str(byteSeq[i:i+4])=="b'\\r\\n\\r\\n'":
-            return i+4
+        if str(byteSeq[i : i + 4]) == "b'\\r\\n\\r\\n'":
+            return i + 4
 
 
 def proxy_server():
@@ -204,21 +206,22 @@ def proxy_server():
             data = client_socket.recv(BUFF_SIZE)
             if check_request(data) == 2:
                 continue
-            
+
             # Receive the request from the client
-           
-            data_str=data[0:cut_byteSeq(data)].decode()
-            print(data_str)
+
+            data_cut = data[0 : cut_byteSeq(data)]
+
+            print(data_cut.decode())
             request_data = data
             response_data = b""
 
             # check valid web for 403
-            if not check_valid_web(request_data.decode().split()[1]):
+            if not check_valid_web(data_cut.decode().split()[1].split('/')[2]):
                 response_data = configure_403(response_data)
 
             else:
                 # caching time
-                request_str = data.decode("utf8")
+                request_str = data_cut.decode("utf8")
                 url = request_str.split("\n")[0].split()[1]
 
                 if isImageURL(url) == True:
@@ -231,8 +234,9 @@ def proxy_server():
 
                 else:
                     response_data = forward2Server(request_data, url)
-                end=cut_byteSeq(response_data)
-                response_data_str=response_data[0:cut_byteSeq(response_data)].decode()
+
+                end = cut_byteSeq(response_data)
+                response_data_str = response_data[0:end].decode()
                 print(response_data_str)
 
             break
@@ -244,7 +248,7 @@ def proxy_server():
         client_socket.close()
 
         # Tăng số luồng đang hoạt động
-        #active_thread_count += 1
+        # active_thread_count += 1
 
 
 def manage_threads():
