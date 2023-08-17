@@ -65,6 +65,7 @@ def check_request(request):
 def get_host_name(request):
     return request.decode("utf8").split()[4]
 
+
 def check_valid_time(response_data):
     if not (current_time_hour >= open_time and current_time_hour <= end_time):
         response_data = configure_403(response_data)
@@ -72,6 +73,7 @@ def check_valid_time(response_data):
         if current_time_minute > 0:
             response_data = configure_403(response_data)
     return response_data
+
 
 def configure_403(response_data):
     response_data = b"HTTP/1.0 403 Forbidden\r\n"
@@ -97,12 +99,14 @@ def configure_403(response_data):
 
     return response_data
 
+
 def check_valid_web(request_path):
     for item in while_list:
         index = request_path.find(item)
         if index != -1:
             return True
     return False
+
 
 # it's cache time!
 def isImageURL(url):
@@ -116,6 +120,7 @@ def isImageURL(url):
 
     return False
 
+
 def Caching(url):
     global cache
 
@@ -123,8 +128,9 @@ def Caching(url):
     if url in cache and now - cache[url]["timestamp"] <= cache_timeout:
         print("Image from cache: ")
         return cache[url]["image"]
-    
+
     return ""
+
 
 # Forward the client's request to the web server
 def forward2Server(request, url):
@@ -150,6 +156,7 @@ def forward2Server(request, url):
 
     return response
 
+
 def process_request(request_data):
     global cache
 
@@ -167,6 +174,7 @@ def process_request(request_data):
     else:
         return forward2Server(request_data, url)
 
+
 def handle_client(client_socket):
     data = client_socket.recv(BUFF_SIZE)
     response_data = process_request(data)
@@ -182,7 +190,6 @@ def proxy_server():
     proxy_socket.bind((HOST, PORT))
     proxy_socket.listen(1)
 
-    
     thread_manager = threading.Thread(target=manage_threads)
     thread_manager.start()
     while True:
@@ -210,7 +217,6 @@ def proxy_server():
             url = request_str.split("\n")[0].split()[1]
 
             if isImageURL(url) == True:
-
                 cache_response = Caching(url)
 
                 if cache_response != "":
@@ -229,8 +235,9 @@ def proxy_server():
         # Close the sockets
         client_socket.close()
 
-              # Tăng số luồng đang hoạt động
+        # Tăng số luồng đang hoạt động
         active_thread_count += 1
+
 
 def manage_threads():
     global active_thread_count
@@ -243,13 +250,7 @@ def manage_threads():
             active_thread_count -= 1
 
 
-
-
-        
-
-
 if __name__ == "__main__":
     filename = "config.txt"
     readFile(filename)
     proxy_server()
-
