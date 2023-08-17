@@ -15,6 +15,7 @@ num_white_list = -1
 open_time = int(-1)
 end_time = int(-1)
 cache = {}
+active_thread_count=0
 
 
 # read file 'config.txt'
@@ -66,38 +67,38 @@ def get_host_name(request):
     return request.decode("utf8").split()[4]
 
 
-def check_valid_time(response_data):
+def check_valid_time(response):
     if not (current_time_hour >= open_time and current_time_hour <= end_time):
-        response_data = configure_403(response_data)
+        response = configure_403(response)
     if current_time_hour == end_time:
         if current_time_minute > 0:
-            response_data = configure_403(response_data)
-    return response_data
+            response = configure_403(response)
+    return response
 
 
-def configure_403(response_data):
-    response_data = b"HTTP/1.0 403 Forbidden\r\n"
-    response_data += b"Content-Type: text/html\r\n"
-    response_data += b"Content-Length: 130\r\n"  # Length of the HTML content
-    response_data += (
+def configure_403(response):
+    response = b"HTTP/1.0 403 Forbidden\r\n"
+    response += b"Content-Type: text/html\r\n"
+    response += b"Content-Length: 130\r\n"  # Length of the HTML content
+    response += (
         b"Connection: close\r\n"  # Close the connection after sending the response
     )
-    response_data += b"\r\n"
-    response_data += b"<html>"
-    response_data += b"<head>"
-    response_data += b"<title>403 Forbidden</title>"
-    response_data += b"<style>"
-    response_data += (
+    response += b"\r\n"
+    response += b"<html>"
+    response += b"<head>"
+    response += b"<title>403 Forbidden</title>"
+    response += b"<style>"
+    response += (
         b"h1 { color: black; }"  # Define the CSS style for the h1 element (red color)
     )
-    response_data += b"</style>"
-    response_data += b"</head>"
-    response_data += b"<body>"
-    response_data += b"<h1>403 Not this time, access forbidden</h1>"
-    response_data += b"</body>"
-    response_data += b"</html>"
+    response += b"</style>"
+    response += b"</head>"
+    response += b"<body>"
+    response += b"<h1>403 Not this time, access forbidden</h1>"
+    response += b"</body>"
+    response += b"</html>"
 
-    return response_data
+    return response
 
 
 def check_valid_web(request_path):
@@ -157,10 +158,10 @@ def forward2Server(request, url):
     return response
 
 
-def process_request(request_data):
+def process_request(request):
     global cache
 
-    url = request_data.decode("utf8").split("\n")[0].split()[1]
+    url = request.decode("utf8").split("\n")[0].split()[1]
 
     if not check_valid_web(url):
         return configure_403(b"")
@@ -170,16 +171,16 @@ def process_request(request_data):
         if cache_response != "":
             return cache_response
         else:
-            return forward2Server(request_data, url)
+            return forward2Server(request, url)
     else:
-        return forward2Server(request_data, url)
+        return forward2Server(request, url)
 
 
 def handle_client(client_socket):
     data = client_socket.recv(BUFF_SIZE)
-    response_data = process_request(data)
+    response = process_request(data)
 
-    client_socket.sendall(response_data)
+    client_socket.sendall(response)
     client_socket.close()
 
 
@@ -191,11 +192,13 @@ def cut_byteSeq(byteSeq):
 
 def proxy_server():
     global cache
+    global active_thread_count
 
     proxy_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     proxy_socket.bind((HOST, PORT))
     proxy_socket.listen(1)
 
+   
     thread_manager = threading.Thread(target=manage_threads)
     thread_manager.start()
     while True:
@@ -203,52 +206,52 @@ def proxy_server():
         client_socket, client_addr = proxy_socket.accept()
         print("Received a connection from:", client_addr)
         while True:
-            data = client_socket.recv(BUFF_SIZE)
-            if check_request(data) == 2:
-                continue
 
             # Receive the request from the client
+            request = client_socket.recv(BUFF_SIZE)
+            if check_request(request) == 2:
+                continue
 
-            data_cut = data[0 : cut_byteSeq(data)]
-
-            print(data_cut.decode())
-            request_data = data
-            response_data = b""
+            request_cut = request[0 : cut_byteSeq(request)]
+            response = b""
 
             # check valid web for 403
-            if not check_valid_web(data_cut.decode().split()[1].split('/')[2]):
-                response_data = configure_403(response_data)
+            if not check_valid_web(request_cut.decode().split()[1].split('/')[2]):
+                response = configure_403(response)
 
             else:
+                
+                print(request_cut.decode())
+                
                 # caching time
-                request_str = data_cut.decode("utf8")
+                request_str = request_cut.decode("utf8")
                 url = request_str.split("\n")[0].split()[1]
 
                 if isImageURL(url) == True:
                     cache_response = Caching(url)
 
                     if cache_response != "":
-                        response_data += cache_response
+                        response += cache_response
                     else:
-                        response_data = forward2Server(request_data, url)
+                        response = forward2Server(request, url)
 
                 else:
-                    response_data = forward2Server(request_data, url)
+                    response = forward2Server(request, url)
 
-                end = cut_byteSeq(response_data)
-                response_data_str = response_data[0:end].decode()
-                print(response_data_str)
+                end = cut_byteSeq(response)
+                response_str = response[0:end].decode()
+                print(response_str)
 
             break
 
         # Send the response back to the client
-        client_socket.sendall(response_data)
+        client_socket.sendall(response)
 
         # Close the sockets
         client_socket.close()
 
         # Tăng số luồng đang hoạt động
-        # active_thread_count += 1
+        active_thread_count += 1
 
 
 def manage_threads():
