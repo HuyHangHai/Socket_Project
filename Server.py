@@ -174,13 +174,17 @@ def process_request(request_data):
     else:
         return forward2Server(request_data, url)
 
-
 def handle_client(client_socket):
     data = client_socket.recv(BUFF_SIZE)
     response_data = process_request(data)
 
     client_socket.sendall(response_data)
     client_socket.close()
+
+def cut_byteSeq(byteSeq):
+    for i in range(0, len(byteSeq)):
+        if str(byteSeq[i:i+4])=="b'\\r\\n\\r\\n'":
+            return i+4
 
 
 def proxy_server():
@@ -200,9 +204,11 @@ def proxy_server():
             data = client_socket.recv(BUFF_SIZE)
             if check_request(data) == 2:
                 continue
-            print (type(data),"\n")
+            
             # Receive the request from the client
-            print(data.decode())
+           
+            data_str=data[0:cut_byteSeq(data)].decode()
+            print(data_str)
             request_data = data
             response_data = b""
 
@@ -225,8 +231,9 @@ def proxy_server():
 
                 else:
                     response_data = forward2Server(request_data, url)
-
-                print(response_data, "\n")
+                end=cut_byteSeq(response_data)
+                response_data_str=response_data[0:cut_byteSeq(response_data)].decode()
+                print(response_data_str)
 
             break
 
