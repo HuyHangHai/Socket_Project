@@ -15,7 +15,7 @@ num_white_list = -1
 open_time = int(-1)
 end_time = int(-1)
 cache = {}
-active_thread_count=0
+active_thread_count = 0
 
 
 # read file 'config.txt'
@@ -48,6 +48,8 @@ def readFile(filename):
 
 # check valid request (GET, POST, HEAD)
 def check_request(request):
+    if request == b"":
+        return 2
     # Get method from request
     method = request.split()[0]
 
@@ -198,7 +200,6 @@ def proxy_server():
     proxy_socket.bind((HOST, PORT))
     proxy_socket.listen(1)
 
-   
     thread_manager = threading.Thread(target=manage_threads)
     thread_manager.start()
     while True:
@@ -206,23 +207,21 @@ def proxy_server():
         client_socket, client_addr = proxy_socket.accept()
         print("Received a connection from:", client_addr)
         while True:
-
             # Receive the request from the client
             request = client_socket.recv(BUFF_SIZE)
-            if check_request(request) == 2:
+            if check_request(request[0 : cut_byteSeq(request)]) == 2:
                 continue
 
             request_cut = request[0 : cut_byteSeq(request)]
             response = b""
 
             # check valid web for 403
-            if not check_valid_web(request_cut.decode().split()[1].split('/')[2]):
+            if not check_valid_web(request_cut.decode().split()[1].split("/")[2]):
                 response = configure_403(response)
 
             else:
-                
                 print(request_cut.decode())
-                
+
                 # caching time
                 request_str = request_cut.decode("utf8")
                 url = request_str.split("\n")[0].split()[1]
@@ -242,10 +241,11 @@ def proxy_server():
                 response_str = response[0:end].decode()
                 print(response_str)
 
-            break
+                # Send the response back to the client
+                client_socket.sendall(response)
 
-        # Send the response back to the client
-        client_socket.sendall(response)
+                if "Connection: close" in response_str:
+                    break
 
         # Close the sockets
         client_socket.close()
