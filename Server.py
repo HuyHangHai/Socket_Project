@@ -200,7 +200,7 @@ def proxy_server():
             data = client_socket.recv(BUFF_SIZE)
             if check_request(data) == 2:
                 continue
-
+            print (type(data),"\n")
             # Receive the request from the client
             print(data.decode())
             request_data = data
@@ -226,12 +226,12 @@ def proxy_server():
                 else:
                     response_data = forward2Server(request_data, url)
 
-                # print(response_data, "\n")
-
-            # Send the response back to the client
-            client_socket.sendall(response_data)
+                print(response_data, "\n")
 
             break
+
+        # Send the response back to the client
+        client_socket.sendall(response_data)
 
         # Close the sockets
         client_socket.close()
