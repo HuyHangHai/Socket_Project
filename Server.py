@@ -1,5 +1,6 @@
 import socket
 import sys
+import threading
 from datetime import datetime, time
 import time
 from turtle import forward
@@ -149,6 +150,30 @@ def forward2Server(request, url):
 
     return response
 
+def process_request(request_data):
+    global cache
+
+    url = request_data.decode("utf8").split("\n")[0].split()[1]
+
+    if not check_valid_web(url):
+        return configure_403(b"")
+
+    if isImageURL(url):
+        cache_response = Caching(url)
+        if cache_response != "":
+            return cache_response
+        else:
+            return forward2Server(request_data, url)
+    else:
+        return forward2Server(request_data, url)
+
+def handle_client(client_socket):
+    data = client_socket.recv(BUFF_SIZE)
+    response_data = process_request(data)
+
+    client_socket.sendall(response_data)
+    client_socket.close()
+
 
 def proxy_server():
     global cache
@@ -156,6 +181,10 @@ def proxy_server():
     proxy_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     proxy_socket.bind((HOST, PORT))
     proxy_socket.listen(1)
+
+    
+    thread_manager = threading.Thread(target=manage_threads)
+    thread_manager.start()
     while True:
         print("Ready to serve...")
         while True:
@@ -194,14 +223,33 @@ def proxy_server():
 
             # print(response_data, "\n")
 
-        # Send the response back to the client
+            # Send the response back to the client
         client_socket.sendall(response_data)
 
         # Close the sockets
         client_socket.close()
+
+              # Tăng số luồng đang hoạt động
+        active_thread_count += 1
+
+def manage_threads():
+    global active_thread_count
+    active_thread_count = 0  # Số luồng đang hoạt động
+    MAX_CONCURRENT_THREADS = 10  # Số lượng luồng đồng thời tối đa
+    while True:
+        if active_thread_count >= MAX_CONCURRENT_THREADS:
+            time.sleep(1)
+        else:
+            active_thread_count -= 1
+
+
+
+
+        
 
 
 if __name__ == "__main__":
     filename = "config.txt"
     readFile(filename)
     proxy_server()
+
