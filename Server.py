@@ -66,7 +66,7 @@ def check_request(request):
 
 # get web server's name
 def get_host_name(request):
-    return request.decode("utf8").split()[4]
+    return request.split()[4]
 
 
 def check_valid_time(response):
@@ -115,9 +115,10 @@ def check_valid_web(request_path):
 def isImageURL(url):
     image = url.split("/")[3]
     if image != "":
-        extension = image.split(".")[1]
-        if extension in ["png", "jpg", "jpeg", "gif"]:
-            return True
+        if "."in image:
+            extension = image.split(".")[1]
+            if extension in ["png", "jpg", "jpeg", "gif"]:
+                return True
 
         return False
 
@@ -138,8 +139,9 @@ def Caching(url):
 def forward2Server(request, url):
     global cache
 
-    host_name = get_host_name(request)
-
+    request_str=request[0:cut_byteSeq(request)].decode()
+    host_name = get_host_name(request_str)
+    
     web_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     web_socket.connect((host_name, 80))
     web_socket.sendall(request)
@@ -157,7 +159,7 @@ def forward2Server(request, url):
         cache[url] = {"image": response, "timestamp": time.time()}
 
     # check valid web for 403
-    if not check_valid_web(request.decode().split()[1].split("/")[2]):
+    if not check_valid_web(request_str.split()[1].split("/")[2]):
         response = configure_403(response)
 
     return response
