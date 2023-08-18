@@ -113,7 +113,8 @@ def check_valid_web(request_path):
 
 # it's cache time!
 def isImageURL(url):
-    image = url.split("/")[3]
+    tmp = url.split("/")
+    image = tmp[len(tmp) - 1]
     if image != "":
         if "." in image:
             extension = image.split(".")[1]
@@ -203,8 +204,8 @@ def proxy_server():
         print("Ready to serve...")
         client_socket, client_addr = proxy_socket.accept()
         # Receive the request from the client
+
         while True:
-            
             request = client_socket.recv(BUFF_SIZE)
             if check_request(request[0 : cut_byteSeq(request)]) == 2:
                 continue
@@ -248,8 +249,7 @@ def proxy_server():
             # Send the response back to the client
             client_socket.sendall(response)
 
-            if "Connection: close" in response_str:
-                break
+            break
 
         # Close the sockets
         client_socket.close()
