@@ -115,7 +115,7 @@ def check_valid_web(request_path):
 def isImageURL(url):
     image = url.split("/")[3]
     if image != "":
-        if "."in image:
+        if "." in image:
             extension = image.split(".")[1]
             if extension in ["png", "jpg", "jpeg", "gif"]:
                 return True
@@ -123,6 +123,7 @@ def isImageURL(url):
         return False
 
     return False
+
 
 def Caching(url):
     global cache
@@ -139,9 +140,9 @@ def Caching(url):
 def forward2Server(request, url):
     global cache
 
-    request_str=request[0:cut_byteSeq(request)].decode()
+    request_str = request[0 : cut_byteSeq(request)].decode()
     host_name = get_host_name(request_str)
-    
+
     web_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     web_socket.connect((host_name, 80))
     web_socket.sendall(request)
@@ -150,17 +151,8 @@ def forward2Server(request, url):
     response = web_socket.recv(BUFF_SIZE)
     web_socket.close()
 
-    # check all 403 situations
-    response = check_valid_time(response)
-    if check_request(request) == 3:
-        response = configure_403(response)
-
-    elif isImageURL(url) == True:
+    if isImageURL(url) == True:
         cache[url] = {"image": response, "timestamp": time.time()}
-
-    # check valid web for 403
-    if not check_valid_web(request_str.split()[1].split("/")[2]):
-        response = configure_403(response)
 
     return response
 
@@ -209,35 +201,45 @@ def proxy_server():
     thread_manager.start()
     while True:
         print("Ready to serve...")
-  
+
         while True:
             client_socket, client_addr = proxy_socket.accept()
             # Receive the request from the client
             request = client_socket.recv(BUFF_SIZE)
             if check_request(request[0 : cut_byteSeq(request)]) == 2:
                 continue
-            
-            print("Received a connection from:", client_addr)
-            
+
             request_cut = request[0 : cut_byteSeq(request)]
             response = b""
 
-            print(request_cut.decode())
+            # check all 403 situations
+            response = check_valid_time(response)
 
-            # caching time
-            request_str = request_cut.decode("utf8")
-            url = request_str.split("\n")[0].split()[1]
+            if response == b"":
+                if check_request(request) == 3:
+                    response = configure_403(response)
+                # check valid web for 403
+                elif not check_valid_web(request_cut.decode().split()[1].split("/")[2]):
+                    response = configure_403(response)
 
-            if isImageURL(url) == True:
-                cache_response = Caching(url)
+                else:  # not in 403
+                    print("Received a connection from:", client_addr)
+                    print(request_cut.decode())
 
-                if cache_response != "":
-                    response += cache_response
-                else:
-                    response = forward2Server(request, url)
+                    # caching time
+                    request_str = request_cut.decode("utf8")
+                    url = request_str.split("\n")[0].split()[1]
 
-            else:
-                response = forward2Server(request, url)
+                    if isImageURL(url) == True:
+                        cache_response = Caching(url)
+
+                        if cache_response != "":
+                            response += cache_response
+                        else:
+                            response = forward2Server(request, url)
+
+                    else:
+                        response = forward2Server(request, url)
 
             end = cut_byteSeq(response)
             response_str = response[0:end].decode()
