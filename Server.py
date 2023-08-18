@@ -123,7 +123,6 @@ def isImageURL(url):
 
     return False
 
-
 def Caching(url):
     global cache
 
@@ -156,6 +155,10 @@ def forward2Server(request, url):
 
     elif isImageURL(url) == True:
         cache[url] = {"image": response, "timestamp": time.time()}
+
+    # check valid web for 403
+    if not check_valid_web(request.decode().split()[1].split("/")[2]):
+        response = configure_403(response)
 
     return response
 
@@ -204,48 +207,45 @@ def proxy_server():
     thread_manager.start()
     while True:
         print("Ready to serve...")
-        client_socket, client_addr = proxy_socket.accept()
-        print("Received a connection from:", client_addr)
+  
         while True:
+            client_socket, client_addr = proxy_socket.accept()
             # Receive the request from the client
             request = client_socket.recv(BUFF_SIZE)
             if check_request(request[0 : cut_byteSeq(request)]) == 2:
                 continue
-
+            
+            print("Received a connection from:", client_addr)
+            
             request_cut = request[0 : cut_byteSeq(request)]
             response = b""
 
-            # check valid web for 403
-            if not check_valid_web(request_cut.decode().split()[1].split("/")[2]):
-                response = configure_403(response)
+            print(request_cut.decode())
 
-            else:
-                print(request_cut.decode())
+            # caching time
+            request_str = request_cut.decode("utf8")
+            url = request_str.split("\n")[0].split()[1]
 
-                # caching time
-                request_str = request_cut.decode("utf8")
-                url = request_str.split("\n")[0].split()[1]
+            if isImageURL(url) == True:
+                cache_response = Caching(url)
 
-                if isImageURL(url) == True:
-                    cache_response = Caching(url)
-
-                    if cache_response != "":
-                        response += cache_response
-                    else:
-                        response = forward2Server(request, url)
-
+                if cache_response != "":
+                    response += cache_response
                 else:
                     response = forward2Server(request, url)
 
-                end = cut_byteSeq(response)
-                response_str = response[0:end].decode()
-                print(response_str)
+            else:
+                response = forward2Server(request, url)
 
-                # Send the response back to the client
-                client_socket.sendall(response)
+            end = cut_byteSeq(response)
+            response_str = response[0:end].decode()
+            print(response_str)
 
-                if "Connection: close" in response_str:
-                    break
+            # Send the response back to the client
+            client_socket.sendall(response)
+
+            if "Connection: close" in response_str:
+                break
 
         # Close the sockets
         client_socket.close()
