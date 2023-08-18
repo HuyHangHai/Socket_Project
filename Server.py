@@ -201,10 +201,10 @@ def proxy_server():
     thread_manager.start()
     while True:
         print("Ready to serve...")
-
+        client_socket, client_addr = proxy_socket.accept()
+        # Receive the request from the client
         while True:
-            client_socket, client_addr = proxy_socket.accept()
-            # Receive the request from the client
+            
             request = client_socket.recv(BUFF_SIZE)
             if check_request(request[0 : cut_byteSeq(request)]) == 2:
                 continue
